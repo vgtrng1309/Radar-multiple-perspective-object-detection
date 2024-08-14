@@ -36,9 +36,11 @@ def convert(seq_path):
                'region_shape_attributes', 'region_attributes']
     data = []
 
+    print(seq_path)
     for file in files:
         file_dir = os.path.join(label_path, file)
         label = open(file_dir)
+        # print(file)
         img_name = file.replace("csv", "jpg")
         img_size = os.path.getsize(os.path.join(images_path, img_name))
         region_count = 0
@@ -47,15 +49,18 @@ def convert(seq_path):
         # parse a label file
         for line in label:
             line = line.rstrip().split(',')
-            if int(line[1]) in release_dataset_label_map:
-                type_ = release_dataset_label_map[int(line[1])]
+            if int(float(line[1])) in release_dataset_label_map:
+                type_ = release_dataset_label_map[int(float(line[1]))]
             else:
                 continue
 
             x = int(float(line[2]))
             y = int(float(line[3]))
             distance = math.sqrt(x ** 2 + y ** 2)
-            angle = math.degrees(math.atan(x / y))  # in degree
+            if y != 0:
+                angle = math.degrees(math.atan(x / y))  # in degree
+            else:
+                angle = 0.0 if x >= 0 else 180.0
             rng_idx, _ = find_nearest(range_grid, distance)
             agl_idx, _ = find_nearest(angle_grid, angle)
             obj_info.append([rng_idx, agl_idx, type_])

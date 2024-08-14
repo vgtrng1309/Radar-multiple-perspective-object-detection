@@ -128,44 +128,49 @@ def main():
     RV slice (accumulate along the Angle domain)
     VA slice (accumulate along the Range domain)
     """
-    root_dir = './template_files/slice_sample_data/'
-    dates = ['2019_04_30']
-    for capture_date in dates:
-        cap_folder_dir = os.path.join(root_dir, capture_date)
-        seqs = sorted(os.listdir(cap_folder_dir))
-        for seq in seqs:
-            seq_dir = os.path.join(cap_folder_dir, seq)
-            files = sorted(os.listdir(seq_dir))
-            print('Processing ', seq)
-            for idf, file in enumerate(files[0:1]):
-                file_dir = os.path.join(seq_dir, file)
-                mat = spio.loadmat(file_dir, squeeze_me=True)
-                data = np.asarray(mat["adc_data"])
-                # Range FFT
-                data = range_fft(data)
-                # generate RV slice
-                RV_slice, rv_raw1, rv_raw2 = produce_RV_slice(data) # (128, 128, 2)
-                # generate VA slice
-                VA_slice = produce_VA_slice(rv_raw1, rv_raw2)   # (128, 128, 2)
-                # generate RA slice
-                RA_slice = produce_RA_slice(data)   # (128, 128, 255, 2)
+    root_dir = "./data/Automotive"
+    seq_list = sorted(os.listdir(root_dir))
 
-                # Create 1x3 sub plots
-                gs = gridspec.GridSpec(1, 3)
-                # visualize 3 slices
-                plt.figure(tight_layout=True)
-                ax = plt.subplot(gs[0, 0])  # row 0, col 0
-                plt.imshow(np.sqrt(RA_slice[:, :, 0, 0] ** 2 + RA_slice[:, :, 0, 1] ** 2), origin='lower')
-                ax.set_title("RA Slice")
+    for seq in seq_list:
+        seq_dir = os.path.join(root_dir, seq, "radar_raw_frame")
+        files = sorted(os.listdir(seq_dir))
+        # print('Processing ', files)
+        for idf, file in enumerate(files):
+            file_dir = os.path.join(seq_dir, file)
+            mat = spio.loadmat(file_dir, squeeze_me=True)
+            data = np.asarray(mat["adcData"])
 
-                ax2 = plt.subplot(gs[0, 1])  # row 0, col 1
-                plt.imshow(RV_slice[:, :, 0], origin='lower')
-                ax2.set_title("RV Slice")
+            # Convert ADC format (samples-128, chirps-255, receivers-4, transmitters-2)
+            # to RAMP-CNN format (samples-128, antennas-8, chirps-255)
+            s, c, r, t = data.shape
+            data = data.reshape(s, c, r*t).transpose(0, 2, 1)
+            # print(data.shape) 
 
-                ax3 = plt.subplot(gs[0, 2])  # row 0, col 2
-                plt.imshow(VA_slice[:, :, 0])
-                ax3.set_title("VA Slice")
-                plt.show()
+            # Range FFT
+            data = range_fft(data)
+            # generate RV slice
+            RV_slice, rv_raw1, rv_raw2 = produce_RV_slice(data) # (128, 128, 2)
+            # generate VA slice
+            VA_slice = produce_VA_slice(rv_raw1, rv_raw2)   # (128, 128, 2)
+            # generate RA slice
+            RA_slice = produce_RA_slice(data)   # (128, 128, 255, 2)
+
+            # Create 1x3 sub plots
+            gs = gridspec.GridSpec(1, 3)
+            # visualize 3 slices
+            plt.figure(tight_layout=True)
+            ax = plt.subplot(gs[0, 0])  # row 0, col 0
+            plt.imshow(np.sqrt(RA_slice[:, :, 0, 0] ** 2 + RA_slice[:, :, 0, 1] ** 2), origin='lower')
+            ax.set_title("RA Slice")
+
+            ax2 = plt.subplot(gs[0, 1])  # row 0, col 1
+            plt.imshow(RV_slice[:, :, 0], origin='lower')
+            ax2.set_title("RV Slice")
+
+            ax3 = plt.subplot(gs[0, 2])  # row 0, col 2
+            plt.imshow(VA_slice[:, :, 0])
+            ax3.set_title("VA Slice")
+            plt.show()
 
 
 if __name__ == '__main__':
